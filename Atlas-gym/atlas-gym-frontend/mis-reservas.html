@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Reservas - Tatami Digital</title>
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        const token = localStorage.getItem("tokenAtlas");
+        if (!token) window.location.href = "login.html";
+
+        window.onload = function() {
+            const nombreGuardado = localStorage.getItem("nombreLuchador");
+            if (nombreGuardado) {
+                document.getElementById("nombrePerfil").innerText = nombreGuardado;
+                cargarMisReservas(nombreGuardado);
+            }
+        };
+
+        function cargarMisReservas(nombre) {
+            fetch(`http://localhost:7070/mis-reservas?alumno=${encodeURIComponent(nombre)}`)
+            .then(respuesta => respuesta.json())
+            .then(reservas => {
+                const contenedor = document.getElementById('contenedorReservas');
+                contenedor.innerHTML = ''; 
+
+                if (reservas.length === 0) {
+                    contenedor.innerHTML = '<p style="color: #aaaaaa; text-align: center;">Aún no tenés clases reservadas.<br>¡Anotate a tu primer entrenamiento!</p>';
+                    return;
+                }
+
+                const reservasAgrupadas = {};
+                reservas.forEach(reserva => {
+                    if (!reservasAgrupadas[reserva.dia]) reservasAgrupadas[reserva.dia] = [];
+                    reservasAgrupadas[reserva.dia].push(reserva);
+                });
+
+                const ordenDias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
+                ordenDias.forEach(dia => {
+                    if (reservasAgrupadas[dia]) {
+                        contenedor.innerHTML += `
+                            <h4 style="color: #ffffff; margin: 25px 0 10px 0; border-bottom: 1px solid #444; padding-bottom: 8px; font-size: 20px;">
+                                <span style="color: #d32f2f;">|</span> ${dia}
+                            </h4>
+                        `;
+                        reservasAgrupadas[dia].forEach(reserva => {
+                            contenedor.innerHTML += `
+                                <div class="reserva-card" style="margin-bottom: 10px;">
+                                    <div class="reserva-info">
+                                        <span class="horario-reserva">${reserva.disciplina}</span>
+                                        <span style="color: #aaaaaa; font-size: 15px;">👊 ${reserva.horario}</span>
+                                    </div>
+                                    <button class="btn-cancelar-reserva" onclick="abrirModalCancelacion('${reserva.dia}', '${reserva.horario}', '${reserva.disciplina}')">
+                                        ❌ Cancelar
+                                    </button>
+                                </div>
+                            `;
+                        });
+                    }
+                });
+            })
+            .catch(error => document.getElementById('contenedorReservas').innerHTML = '<p style="color: red;">Error de servidor.</p>');
+        }
+
+        let reservaPendiente = null; 
+
+        function abrirModalCancelacion(dia, horario, disciplina) {
+            reservaPendiente = { dia, horario, disciplina };
+            document.getElementById('textoModal').innerText = `¿Querés bajarte de tu clase de ${disciplina} del ${dia}?`;
+            document.getElementById('modalConfirmacion').style.display = 'flex';
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalConfirmacion').style.display = 'none';
+            reservaPendiente = null;
+        }
+
+        function ejecutarCancelacion() {
+            if (!reservaPendiente) return;
+            const nombreAlumno = localStorage.getItem("nombreLuchador");
+            const { dia, horario, disciplina } = reservaPendiente;
+            
+            const url = `http://localhost:7070/cancelar-reserva?alumno=${encodeURIComponent(nombreAlumno)}&dia=${encodeURIComponent(dia)}&horario=${encodeURIComponent(horario)}&disciplina=${encodeURIComponent(disciplina)}`;
+            
+            fetch(url, { method: 'DELETE' })
+            .then(respuesta => respuesta.text())
+            .then(textoServidor => {
+                cerrarModal(); 
+                const toast = document.getElementById("toastNotificacion");
+                toast.innerText = textoServidor;
+                toast.className = "mostrar exito";
+                setTimeout(() => toast.className = toast.className.replace("mostrar exito", ""), 3000); 
+                cargarMisReservas(nombreAlumno); 
+            });
+        }
+    </script>
+</head>
+<body class="contenedor-calendario fondo-mis-reservas"> 
+    <header class="cabecera-calendario">
+        <h2>Panel del Luchador</h2>
+        <a href="calendario.html" class="link-volver">Volver al Calendario</a>
+    </header>
+
+    <main class="perfil-usuario"> 
+        <div class="info-alumno" style="display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; border-radius: 8px; border: 1px solid #333;">
+            <div>
+                <h3 style="margin: 0; font-size: 14px; color: #aaa;">Perfil Activo</h3>
+                <p style="color: #ffffff; font-size: 20px; font-weight: bold; margin: 5px 0 0 0;" id="nombrePerfil">Cargando...</p>
+            </div>
+            <a href="historial-alumno.html" style="background: #444; color: white; text-decoration: none; padding: 10px 15px; border-radius: 5px; font-size: 13px; font-weight: bold; border: 1px solid #555;">
+                📜 VER HISTORIAL
+            </a>
+        </div>
+
+        <h3 style="color: #d32f2f; margin: 25px 0 10px 0;">Tu Cronograma</h3>
+        <div class="lista-reservas" id="contenedorReservas">
+            <p style="color: #aaaaaa;">Cargando tus reservas...</p>
+        </div>
+    </main>
+
+    <div id="toastNotificacion">Mensaje base</div>
+
+    <!-- ✅ CORREGIDO: display:none para que el modal arranque oculto -->
+    <div id="modalConfirmacion" class="modal-overlay" style="display: none;">
+        <div class="modal-contenido">
+            <h3 style="color: #d32f2f; margin-bottom: 10px;">Confirmar Cancelación</h3>
+            <p id="textoModal" style="color: #cccccc; font-size: 15px; margin-bottom: 20px;">¿Estás seguro?</p>
+            <div class="modal-botones">
+                <button class="btn-modal-cancelar" onclick="cerrarModal()">Volver al tapiz</button>
+                <button class="btn-modal-confirmar" onclick="ejecutarCancelacion()">Sí, cancelar clase</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - Atlas Gym</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="registro-container">
+
+    <div class="formulario-container">
+        <h2>Ingreso al Tatami</h2>
+        
+        <form id="registroForm">
+            <div class="form-group">
+                <label for="nombreAlumno">Nombre Completo:</label>
+                <input type="text" id="nombreAlumno" name="nombre" placeholder="Ej. Jon Jones" required>
+            </div>
+
+            <div class="form-group">
+                <label for="emailAlumno">Email:</label>
+                <input type="email" id="emailAlumno" name="email" placeholder="tucorreo@email.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="passwordAlumno">Contraseña:</label>
+                <input type="password" id="passwordAlumno" name="password" required>
+            </div>
+
+            <div class="form-group">
+                <label for="disciplinaBase">Disciplina Base:</label>
+                <select id="disciplinaBase" name="disciplina">
+                    <option value="Kickboxing">Kickboxing</option>
+                    <option value="Wrestling">Wrestling</option>
+                    <option value="Jiu-Jitsu">Jiu-Jitsu</option>
+                    <option value="MMA">MMA</option>
+                </select>
+            </div>
+
+            <button type="submit">Registrar Luchador</button>
+            
+            <div class="enlaces-extra">
+                <a href="login.html">¿Ya tienes cuenta? Inicia sesión</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('registroForm').addEventListener('submit', async function(evento) {
+            evento.preventDefault();
+            const formData = new URLSearchParams(new FormData(this));
+
+            try {
+                const respuesta = await fetch('http://localhost:7070/registrar-luchador', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const mensaje = await respuesta.text();
+                
+                if (respuesta.ok) {
+                    alert(mensaje);
+                    window.location.href = "login.html"; // Redirigir al login
+                } else {
+                    alert("Error: " + mensaje);
+                }
+            } catch (error) {
+                alert("Error: El servidor no responde.");
+            }
+        });
+    </script>
+</body>
+</html>

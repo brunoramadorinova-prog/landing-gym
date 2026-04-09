@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas Gym - Calendario</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="contenedor-calendario">
+
+    <header class="cabecera-calendario">
+        <div>
+            <h2>Horarios del Tatami</h2>
+            <p style="color: #aaaaaa; font-size: 18px; margin-top: 5px;">
+                Bienvenido, <span id="displayNombre" style="color: #d32f2f; font-weight: bold;">Luchador</span>
+            </p>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <a href="mis-reservas.html" class="link-volver" style="background: #333; padding: 10px 15px; border-radius: 5px; border: 1px solid #444; text-decoration: none; color: white; font-weight: bold; font-size: 14px;">
+                MIS RESERVAS
+            </a>
+            <a href="#" id="btnCerrarSesion" class="link-volver">CERRAR SESIÓN</a>
+        </div>
+    </header>
+
+    <main class="grilla-semana" id="contenedorGrilla">
+        <p style="color: white; padding: 20px;">Cargando cronograma de batalla...</p>
+    </main>
+
+    <div id="toastNotificacion"></div>
+
+    <script>
+        // 1. Recuperar datos de sesión
+        const nombreAlumno = localStorage.getItem("nombreLuchador");
+        const token = localStorage.getItem("tokenAtlas");
+
+        // 2. Seguridad: Si no hay token, rebota al login
+        if (!nombreAlumno || !token) {
+            window.location.href = "login.html";
+        }
+        
+        document.getElementById("displayNombre").innerText = nombreAlumno;
+
+        // 3. Cabeceras para todas las peticiones
+        function getHeaders() {
+            return { 
+                'Authorization': 'Bearer ' + token 
+            };
+        }
+
+        function lanzarToast(msg, tipo) {
+            const t = document.getElementById("toastNotificacion");
+            t.innerText = msg;
+            t.className = "mostrar " + (tipo || "");
+            setTimeout(() => t.className = "", 3000);
+        }
+
+        // Calcula la fecha real de los días de la semana
+        function obtenerProximaFechaObjeto(diaNombre) {
+            const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+            const hoy = new Date();
+            const indiceHoy = hoy.getDay();
+            const indiceDestino = diasSemana.indexOf(diaNombre);
+            let diferencia = indiceDestino - indiceHoy;
+            if (diferencia < 0) diferencia += 7;
+            const res = new Date(hoy);
+            res.setDate(hoy.getDate() + diferencia);
+            return res;
+        }
+
+        async function cargarCalendario() {
+            const contenedor = document.getElementById('contenedorGrilla');
+            try {
+                // Peticiones al servidor
+                const [resClases, resMisReservas] = await Promise.all([
+                    fetch('http://localhost:7070/obtener-horarios', { headers: getHeaders() }),
+                    fetch(`http://localhost:7070/chequear-reservas?alumno=${encodeURIComponent(nombreAlumno)}`, { headers: getHeaders() })
+                ]);
+
+                if (resClases.status === 401 || resClases.status === 403) {
+                    localStorage.clear();
+                    window.location.href = "login.html";
+                    return;
+                }
+
+                if (!resClases.ok) {
+                    throw new Error("Error al obtener clases del servidor");
+                }
+
+                const clases = await resClases.json();
+                const misReservas = await resMisReservas.json();
+
+                if (clases.length === 0) {
+                    contenedor.innerHTML = '<p style="color:#888; padding: 20px;">No hay clases programadas.</p>';
+                    return;
+                }
+
+                // Lógica de organización por días
+                const diasUnicos = [...new Set(clases.map(c => c.dia))];
+                const cronologia = diasUnicos.map(d => ({ 
+                    nombre: d, 
+                    fechaObj: obtenerProximaFechaObjeto(d) 
+                })).sort((a, b) => a.fechaObj - b.fechaObj);
+
+                contenedor.innerHTML = '';
+                cronologia.forEach(item => {
+                    const fechaTxt = item.fechaObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+                    let html = `<div class="dia-columna">
+                                    <h3>${item.nombre}<br>
+                                    <small style="color:#e63946; font-size:12px;">${fechaTxt}</small></h3>`;
+                    
+                    const clasesDelDia = clases.filter(c => c.dia === item.nombre);
+                    clasesDelDia.forEach(clase => {
+                        // Verificar si ya existe una reserva para este alumno en este horario/disciplina
+                        const yaAnotado = misReservas.find(r => r.horario === clase.horario && r.disciplina === clase.disciplina);
+                        
+                        html += `
+                            <div class="clase-card ${clase.clase_tipo || 'normal'}">
+                                <span class="horario">${clase.horario}</span>
+                                <span class="disciplina">${clase.disciplina}</span>
+                                <button class="btn-reservar" 
+                                    onclick="reservar(this, '${item.nombre}', '${clase.horario}', '${clase.disciplina}', '${fechaTxt}')"
+                                    ${yaAnotado ? 'disabled style="background:#2e7d32; cursor: default;"' : ''}>
+                                    ${yaAnotado ? 'ANOTADO' : 'RESERVAR'}
+                                </button>
+                            </div>`;
+                    });
+                    contenedor.innerHTML += html + `</div>`;
+                });
+            } catch (e) { 
+                console.error(e);
+                lanzarToast("Error al conectar con el servidor", "error");
+                contenedor.innerHTML = `<p style="color: #ff6b6b; padding: 20px;">⚠️ ${e.message}</p>`;
+            }
+        }
+
+        async function reservar(btn, dia, horario, disciplina, fecha) {
+            const params = new URLSearchParams({ 
+                alumno_nombre: nombreAlumno, 
+                dia, 
+                horario, 
+                disciplina, 
+                fecha 
+            });
+
+            try {
+                const res = await fetch('http://localhost:7070/reservar-clase', { 
+                    method: 'POST', 
+                    headers: {
+                        ...getHeaders(),
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }, 
+                    body: params 
+                });
+
+                if (!res.ok) throw new Error(await res.text());
+
+                lanzarToast("¡Reserva confirmada!", "exito");
+                btn.innerText = "ANOTADO";
+                btn.disabled = true;
+                btn.style.background = "#2e7d32";
+            } catch (e) { 
+                lanzarToast(e.message || "Error al reservar", "error"); 
+            }
+        }
+
+        document.getElementById('btnCerrarSesion').onclick = (e) => {
+            e.preventDefault();
+            localStorage.clear();
+            window.location.href = "login.html";
+        };
+
+        window.onload = cargarCalendario;
+    </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Historial General - Panel Sensei</title>
+    <style>
+        body { font-family: 'Arial', sans-serif; background: #f4f4f4; color: #333; text-align: center; }
+        .container { max-width: 800px; margin: 50px auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background: #333; color: white; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .back-btn { display: inline-block; margin-top: 20px; color: #fff; background: #333; text-decoration: none; padding: 10px 20px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📋 Registro Global de Asistencias</h2>
+        <p>Control de presencia en el Tatami</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Alumno</th>
+                    <th>Día</th>
+                    <th>Fecha</th>
+                    <th>Disciplina</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-general">
+                </tbody>
+        </table>
+        <a href="entrenador.html" class="back-btn">← Volver al panel de control</a>
+    </div>
+
+    <script>
+        async function cargarHistorialGeneral() {
+            try {
+                const res = await fetch("http://localhost:7070/historial-general");
+                const datos = await res.json();
+                const tabla = document.getElementById("tabla-general");
+
+                if (datos.length === 0) {
+                    tabla.innerHTML = "<tr><td colspan='4' style='text-align:center;'>No hay asistencias marcadas todavía.</td></tr>";
+                    return;
+                }
+
+                tabla.innerHTML = datos.map(h => `
+                    <tr>
+                        <td><strong>${h.alumno}</strong></td>
+                        <td>${h.dia}</td>
+                        <td>${h.fecha}</td>
+                        <td>${h.disciplina} <small>(${h.horario})</small></td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error("Error cargando historial general:", error);
+            }
+        }
+        cargarHistorialGeneral();
+    </script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Sensei Panel - Atlas Gym</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="contenedor-calendario fondo-entrenador">
+    <header class="cabecera-calendario">
+        <div>
+            <h2 style="color: #e63946;">Panel Maestro</h2>
+            <p style="color: #aaa; font-size: 14px; margin-top: 5px;">
+                Asistencias del <span id="diaHoy" style="color: #e63946; font-weight: bold;"></span>
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <a href="calendario.html" class="link-volver">Ver Calendario</a>
+            <a href="#" id="btnCerrarSesion" class="link-volver" style="background:#444;">Salir</a>
+        </div>
+    </header>
+
+    <main style="max-width: 900px; margin: 20px auto; padding: 0 20px;">
+        <section class="login-form" style="max-width: 100%; margin-bottom: 30px;">
+            <h3 style="color:white; margin-bottom:15px;">+ Agregar Clase al Cronograma</h3>
+            <form id="formNuevaClase" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                <select name="dia" required>
+                    <option value="Lunes">Lunes</option><option value="Martes">Martes</option>
+                    <option value="Miércoles">Miércoles</option><option value="Jueves">Jueves</option>
+                    <option value="Viernes">Viernes</option><option value="Sábado">Sábado</option>
+                </select>
+                <input type="text" name="horario" placeholder="Ej: 19:00 - 20:30" required>
+                <input type="text" name="disciplina" placeholder="Disciplina" required>
+                <select name="clase_tipo">
+                    <option value="">Normal</option>
+                    <option value="mma-card">MMA (Rojo)</option>
+                    <option value="wrestling-card">Wrestling (Naranja)</option>
+                </select>
+                <button type="submit" style="background:#2e7d32; margin:0;">CREAR</button>
+            </form>
+        </section>
+
+        <h3 style="color: white; margin-bottom: 10px;">Grilla de Clases</h3>
+        <div id="listaClasesGrilla" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; margin-bottom: 40px;"></div>
+
+        <h3 style="color: white; margin-bottom: 15px;">Asistencias Pendientes</h3>
+        <div id="contenedorReservas"></div>
+    </main>
+
+    <div id="toastNotificacion"></div>
+
+    <script>
+        const token = localStorage.getItem("tokenAtlas");
+        const rol = localStorage.getItem("rolLuchador");
+
+        if (!token || rol !== "ADMIN") {
+            alert("Acceso restringido. Solo para el Sensei.");
+            window.location.href = "login.html";
+        }
+
+        const DIAS_ES = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+        document.getElementById("diaHoy").innerText = DIAS_ES[new Date().getDay()];
+
+        const getHeaders = () => ({ 'Authorization': `Bearer ${token}` });
+
+        function lanzarToast(msg, tipo) {
+            const t = document.getElementById("toastNotificacion");
+            t.innerText = msg;
+            t.className = "mostrar " + (tipo || "");
+            setTimeout(() => t.className = "", 3000);
+        }
+
+        // Cierra clases pasadas y marca ausentes automáticamente al abrir el panel
+        async function cerrarClasesPasadas() {
+            try {
+                await fetch('http://localhost:7070/cerrar-clases-pasadas', {
+                    method: 'POST',
+                    headers: getHeaders()
+                });
+            } catch (e) {
+                console.error("Error al cerrar clases pasadas:", e);
+            }
+        }
+
+        async function cargarTodo() {
+            try {
+                const resC = await fetch('http://localhost:7070/obtener-horarios', { headers: getHeaders() });
+
+                if (resC.status === 401 || resC.status === 403) {
+                    cerrarSesionForzada();
+                    return;
+                }
+
+                const clases = await resC.json();
+                const listC = document.getElementById('listaClasesGrilla');
+                listC.innerHTML = clases.map(c => `
+                    <div class="reserva-card" style="padding: 10px;">
+                        <span><strong>${c.dia}</strong>: ${c.disciplina} | ${c.horario}</span>
+                        <button onclick="eliminarClase(${c.id})" class="btn-cancelar-reserva">✕</button>
+                    </div>
+                `).join('') || '<p style="color:#666;">No hay clases en el cronograma.</p>';
+
+                const resR = await fetch('http://localhost:7070/todas-las-reservas', { headers: getHeaders() });
+                const reservas = await resR.json();
+                const contR = document.getElementById('contenedorReservas');
+                contR.innerHTML = reservas.length > 0 ? reservas.map(r => `
+                    <div class="reserva-card">
+                        <div>
+                            <div class="horario-reserva">${r.alumno}</div>
+                            <div style="font-size:12px; color:#888;">${r.disciplina} | ${r.horario}</div>
+                        </div>
+                        <button onclick="darPresente('${r.alumno}','${r.dia}','${r.horario}','${r.disciplina}')" class="btn-presente">PRESENTE</button>
+                    </div>
+                `).join('') : '<p style="color:#666;">No hay alumnos anotados para hoy.</p>';
+
+            } catch (e) {
+                lanzarToast("Error al conectar con el servidor", "error");
+            }
+        }
+
+        document.getElementById('formNuevaClase').onsubmit = async (e) => {
+            e.preventDefault();
+            try {
+                const res = await fetch('http://localhost:7070/agregar-clase', {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: new URLSearchParams(new FormData(e.target))
+                });
+                if (res.ok) {
+                    lanzarToast("Clase añadida", "exito");
+                    e.target.reset();
+                    cargarTodo();
+                } else {
+                    lanzarToast(await res.text(), "error");
+                }
+            } catch (e) {
+                lanzarToast("Error al guardar clase", "error");
+            }
+        };
+
+        async function eliminarClase(id) {
+            if (confirm("¿Eliminar esta clase del cronograma permanente?")) {
+                try {
+                    const res = await fetch(`http://localhost:7070/eliminar-clase?id=${id}`, {
+                        method: 'DELETE',
+                        headers: getHeaders()
+                    });
+                    if (res.ok) {
+                        lanzarToast("Clase eliminada", "exito");
+                        cargarTodo();
+                    } else {
+                        lanzarToast("No se pudo eliminar", "error");
+                    }
+                } catch (e) {
+                    lanzarToast("Error de conexión", "error");
+                }
+            }
+        }
+
+        async function darPresente(alumno, dia, horario, disciplina) {
+            const fecha = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+            const params = new URLSearchParams({ alumno, dia, horario, disciplina, fecha });
+            try {
+                const res = await fetch('http://localhost:7070/marcar-asistencia', {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: params
+                });
+                if (res.ok) {
+                    lanzarToast("Asistencia confirmada", "exito");
+                    cargarTodo();
+                }
+            } catch (e) {
+                lanzarToast("Error al procesar asistencia", "error");
+            }
+        }
+
+        function cerrarSesionForzada() {
+            localStorage.clear();
+            window.location.href = "login.html";
+        }
+
+        document.getElementById('btnCerrarSesion').onclick = (e) => {
+            e.preventDefault();
+            cerrarSesionForzada();
+        };
+
+        window.onload = async () => {
+            await cerrarClasesPasadas(); // Primero cierra clases pasadas
+            await cargarTodo();          // Luego carga el panel
+        };
+    </script>
+</body>
+</html>
