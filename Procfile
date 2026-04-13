@@ -1,1 +1,1 @@
-web: gunicorn main:app --bind 0.0.0.0:$PORT
+web: pip install gunicorn flask flask-cors psycopg2-binary bcrypt google-auth requests mercadopago pyjwt && gunicorn main:app --bind 0.0.0.0:$PORT
