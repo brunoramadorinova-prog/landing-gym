@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificacion de Email - Atlas Gym</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="contenedor-calendario">
+    <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+        <div style="background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 40px; max-width: 450px; text-align: center;">
+            
+            <h2 style="color: #d32f2f; margin-bottom: 20px;">ATLAS GYM</h2>
+
+            <!-- Estado: verificando -->
+            <div id="estadoVerificando">
+                <p style="color: #ccc; font-size: 16px;">Verificando tu cuenta...</p>
+            </div>
+
+            <!-- Estado: exitoso -->
+            <div id="estadoExito" style="display: none;">
+                <div style="font-size: 60px; margin-bottom: 20px;">✅</div>
+                <h3 style="color: #2e7d32; margin-bottom: 10px;">Email Verificado</h3>
+                <p style="color: #ccc; margin-bottom: 25px;">
+                    Tu cuenta fue activada exitosamente. Ya podas iniciar sesion.
+                </p>
+                <a href="login.html"
+                   style="display: inline-block; background: #d32f2f; color: white; padding: 12px 30px; border-radius: 5px; text-decoration: none; font-weight: bold; font-size: 15px;">
+                    IR AL LOGIN
+                </a>
+            </div>
+
+            <!-- Estado: error -->
+            <div id="estadoError" style="display: none;">
+                <div style="font-size: 60px; margin-bottom: 20px;">❌</div>
+                <h3 style="color: #d32f2f; margin-bottom: 10px;">Link Invalido</h3>
+                <p id="mensajeError" style="color: #ccc; margin-bottom: 25px;"></p>
+                <a href="registro.html"
+                   style="display: inline-block; background: #333; border: 1px solid #555; color: white; padding: 12px 30px; border-radius: 5px; text-decoration: none; font-weight: bold; font-size: 15px;">
+                    VOLVER AL REGISTRO
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        /*
+            Cuando el usuario hace click en el link del email,
+            llega a esta página con el token en la URL:
+            verificar-email.html?token=abc123...
+            
+            Leemos ese token con URLSearchParams y lo mandamos
+            al backend para que valide y active la cuenta.
+        */
+        async function verificar() {
+            const token = new URLSearchParams(window.location.search).get("token");
+
+            if (!token) {
+                mostrarError("No se encontro ningun token de verificacion.");
+                return;
+            }
+
+            try {
+                const res = await fetch(
+                    `http://localhost:7070/verificar-email?token=${token}`
+                );
+                const mensaje = await res.text();
+
+                if (res.ok) {
+                    /*
+                        Verificacion exitosa: ocultamos el spinner
+                        y mostramos el mensaje de exito.
+                    */
+                    document.getElementById("estadoVerificando").style.display = "none";
+                    document.getElementById("estadoExito").style.display = "block";
+                } else {
+                    mostrarError(mensaje);
+                }
+            } catch (e) {
+                mostrarError("Error al conectar con el servidor.");
+            }
+        }
+
+        function mostrarError(mensaje) {
+            document.getElementById("estadoVerificando").style.display = "none";
+            document.getElementById("estadoError").style.display      = "block";
+            document.getElementById("mensajeError").innerText          = mensaje;
+        }
+
+        /*
+            Ejecutamos la verificacion apenas carga la pagina.
+            No necesitamos que el usuario haga nada mas,
+            solo hacer click en el link del email ya es suficiente.
+        */
+        verificar();
+    </script>
+</body>
+</html>

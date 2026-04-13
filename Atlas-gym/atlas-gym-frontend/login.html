@@ -56,7 +56,6 @@
         </form>
     </div>
 
-    <!-- ✅ Toast igual al del resto de la app -->
     <div id="toastNotificacion"></div>
 
     <script>
@@ -78,7 +77,6 @@
                 throw new Error("El servidor rechazó la autenticación de Google.");
             })
             .then(data => procesarLoginExitoso(data))
-            // ✅ Reemplazado alert() por toast
             .catch(error => lanzarToast("Error Google: " + error.message, ""));
         }
 
@@ -95,14 +93,20 @@
                 return respuesta.text().then(texto => { throw new Error(texto) });
             })
             .then(data => procesarLoginExitoso(data))
-            // ✅ Reemplazado alert() por toast
             .catch(error => lanzarToast(error.message, ""));
         });
 
         function procesarLoginExitoso(data) {
             localStorage.setItem("nombreLuchador", data.nombre);
-            localStorage.setItem("rolLuchador", data.rol);
-            localStorage.setItem("tokenAtlas", data.token); 
+            localStorage.setItem("rolLuchador",    data.rol);
+            localStorage.setItem("tokenAtlas",     data.token);
+            /*
+                NUEVO: Guardamos la membresía en localStorage.
+                Esto nos permite saber en cualquier página si el usuario
+                tiene pase libre, limitado o sin membresía,
+                sin tener que consultar al servidor cada vez.
+            */
+            localStorage.setItem("membresiaAtlas", data.membresia || "sin_membresia");
 
             if (data.rol === "ADMIN") {
                 window.location.href = "entrenador.html";

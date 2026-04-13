@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Membresias - Atlas Gym</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="contenedor-calendario">
+    <header class="cabecera-calendario">
+        <div>
+            <h2>Elegí tu Plan</h2>
+            <p style="color: #aaaaaa; font-size: 14px; margin-top: 5px;">
+                Selecciona la membresía que mejor se adapte a vos
+            </p>
+        </div>
+        <a href="calendario.html" class="link-volver">Volver al Calendario</a>
+    </header>
+
+    <main style="max-width: 800px; margin: 40px auto; padding: 0 20px;">
+
+        <!--
+            Banner que muestra la membresía actual del usuario.
+            Si ya tiene una membresía activa lo mostramos acá.
+        -->
+        <div id="membresiaActual" style="display: none; background: #1a1a1a; border: 1px solid #333; border-left: 4px solid #2e7d32; border-radius: 6px; padding: 15px 20px; margin-bottom: 30px;">
+            <p style="color: #aaa; font-size: 13px; margin: 0;">Plan actual</p>
+            <p id="textoMembresiaActual" style="color: white; font-weight: bold; font-size: 16px; margin: 5px 0 0 0;"></p>
+        </div>
+
+        <!--
+            Grilla de planes. Cada card muestra el nombre, descripcion,
+            precio y un boton para iniciar el pago.
+        -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+
+            <!-- PLAN LIMITADO -->
+            <div style="background: #1a1a1a; border: 1px solid #333; border-top: 4px solid #555; border-radius: 8px; padding: 30px; text-align: center;">
+                <h3 style="color: white; font-size: 22px; margin-bottom: 10px;">Pase Limitado</h3>
+                <p style="color: #888; font-size: 14px; margin-bottom: 20px;">
+                    Hasta 2 clases por semana de cualquier disciplina
+                </p>
+                <div style="margin-bottom: 25px;">
+                    <span style="color: #d32f2f; font-size: 42px; font-weight: bold;">$1</span>
+                    <span style="color: #666; font-size: 14px;">/mes</span>
+                </div>
+                <ul style="text-align: left; color: #aaa; font-size: 14px; margin-bottom: 25px; list-style: none; padding: 0;">
+                    <li style="margin-bottom: 8px;">✓ 2 clases por semana</li>
+                    <li style="margin-bottom: 8px;">✓ Cualquier disciplina</li>
+                    <li style="margin-bottom: 8px;">✓ Historial de asistencias</li>
+                    <li style="color: #555;">✗ Sin limite de clases</li>
+                </ul>
+                <button onclick="iniciarPago('limitado')"
+                    style="background: #333; border: 1px solid #555; color: white; padding: 12px 0; width: 100%; border-radius: 5px; font-size: 15px; font-weight: bold; cursor: pointer; margin: 0; transition: 0.3s;">
+                    ELEGIR PLAN
+                </button>
+            </div>
+
+            <!-- PLAN LIBRE -->
+            <div style="background: #1a1a1a; border: 1px solid #d32f2f; border-top: 4px solid #d32f2f; border-radius: 8px; padding: 30px; text-align: center; position: relative;">
+                <!--Badge "Recomendado"-->
+                <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #d32f2f; color: white; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 20px; letter-spacing: 1px;">
+                    RECOMENDADO
+                </div>
+                <h3 style="color: white; font-size: 22px; margin-bottom: 10px;">Pase Libre</h3>
+                <p style="color: #888; font-size: 14px; margin-bottom: 20px;">
+                    Clases ilimitadas en todas las disciplinas
+                </p>
+                <div style="margin-bottom: 25px;">
+                    <span style="color: #d32f2f; font-size: 42px; font-weight: bold;">$2</span>
+                    <span style="color: #666; font-size: 14px;">/mes</span>
+                </div>
+                <ul style="text-align: left; color: #aaa; font-size: 14px; margin-bottom: 25px; list-style: none; padding: 0;">
+                    <li style="margin-bottom: 8px;">✓ Clases ilimitadas</li>
+                    <li style="margin-bottom: 8px;">✓ Todas las disciplinas</li>
+                    <li style="margin-bottom: 8px;">✓ Historial de asistencias</li>
+                    <li style="margin-bottom: 8px;">✓ Prioridad en reservas</li>
+                </ul>
+                <button onclick="iniciarPago('libre')"
+                    style="background: #d32f2f; border: none; color: white; padding: 12px 0; width: 100%; border-radius: 5px; font-size: 15px; font-weight: bold; cursor: pointer; margin: 0; transition: 0.3s;">
+                    ELEGIR PLAN
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="toastNotificacion"></div>
+
+    <script>
+        const nombreAlumno = localStorage.getItem("nombreLuchador");
+        const token        = localStorage.getItem("tokenAtlas");
+        const membresia    = localStorage.getItem("membresiaAtlas") || "sin_membresia";
+
+        if (!nombreAlumno || !token) {
+            window.location.href = "login.html";
+        }
+
+        /*
+            Mostramos la membresía actual si el usuario ya tiene una.
+            Así sabe qué plan tiene antes de cambiar.
+        */
+        if (membresia !== "sin_membresia") {
+            const nombres = {
+                "limitado": "Pase Limitado — 2 clases por semana",
+                "libre":    "Pase Libre — Clases ilimitadas"
+            };
+            document.getElementById("membresiaActual").style.display = "block";
+            document.getElementById("textoMembresiaActual").innerText = nombres[membresia] || membresia;
+        }
+
+        function lanzarToast(msg, tipo) {
+            const t = document.getElementById("toastNotificacion");
+            t.innerText = msg;
+            t.className = "mostrar " + (tipo || "");
+            setTimeout(() => t.className = "", 3500);
+        }
+
+        /*
+            iniciarPago(): Llama al backend para crear una preferencia
+            de pago en MercadoPago y redirige al usuario a la URL de pago.
+            
+            El backend devuelve "init_point" que es la URL de la página
+            de pago de MercadoPago donde el usuario ingresa su tarjeta.
+        */
+        async function iniciarPago(tipo) {
+            try {
+                lanzarToast("Preparando el pago...", "");
+
+                const res = await fetch("http://localhost:7070/crear-pago", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        tipo:   tipo,
+                        nombre: nombreAlumno
+                    })
+                });
+
+                if (!res.ok) throw new Error("Error al crear el pago");
+
+                const data = await res.json();
+                window.location.href = data.init_point;
+
+            } catch (e) {
+                lanzarToast("Error al procesar el pago. Intentá de nuevo.", "error");
+            }
+        }
+    </script>
+</body>
+</html>

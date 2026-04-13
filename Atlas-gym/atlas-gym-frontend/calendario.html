@@ -16,12 +16,43 @@
             </p>
         </div>
         <div style="display: flex; gap: 15px; align-items: center;">
-            <a href="mis-reservas.html" class="link-volver" style="background: #333; padding: 10px 15px; border-radius: 5px; border: 1px solid #444; text-decoration: none; color: white; font-weight: bold; font-size: 14px;">
+            <a href="entrenador.html" id="btnPanelMaestro" class="link-volver" 
+               style="background: #8b0000; padding: 10px 15px; border-radius: 5px; border: 1px solid #ff4d4d; text-decoration: none; color: white; font-weight: bold; font-size: 14px; display: none;">
+                PANEL MAESTRO
+            </a>
+            <a href="mis-reservas.html" id="btnMisReservas" class="link-volver" 
+               style="background: #333; padding: 10px 15px; border-radius: 5px; border: 1px solid #444; text-decoration: none; color: white; font-weight: bold; font-size: 14px;">
                 MIS RESERVAS
             </a>
-            <a href="#" id="btnCerrarSesion" class="link-volver">CERRAR SESIÓN</a>
+            <a href="#" id="btnCerrarSesion" class="link-volver">CERRAR SESION</a>
         </div>
     </header>
+
+    <!--
+        NUEVO: Modal de upgrade a pase libre.
+        Aparece cuando el alumno con pase limitado intenta
+        reservar una tercera clase en la semana.
+        Por defecto está oculto (display: none).
+    -->
+    <div id="modalUpgrade" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 999; justify-content: center; align-items: center;">
+        <div style="background: #1a1a1a; border: 1px solid #d32f2f; border-radius: 8px; padding: 30px; max-width: 400px; text-align: center;">
+            <h3 style="color: #d32f2f; margin-bottom: 10px;">Limite semanal alcanzado</h3>
+            <p style="color: #ccc; margin-bottom: 20px;">
+                Ya usaste tus 2 clases de esta semana con el Pase Limitado.<br><br>
+                Upgrade al <strong style="color: white;">Pase Libre</strong> y entrenа sin limites.
+            </p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button onclick="cerrarModalUpgrade()" 
+                    style="background: #333; border: 1px solid #555; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: auto; font-size: 14px; margin: 0;">
+                    Ahora no
+                </button>
+                <button onclick="irAPagarUpgrade()" 
+                    style="background: #d32f2f; border: none; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: auto; font-size: 14px; margin: 0;">
+                    Upgrade a Pase Libre
+                </button>
+            </div>
+        </div>
+    </div>
 
     <main class="grilla-semana" id="contenedorGrilla">
         <p style="color: white; padding: 20px;">Cargando cronograma de batalla...</p>
@@ -30,22 +61,30 @@
     <div id="toastNotificacion"></div>
 
     <script>
-        // 1. Recuperar datos de sesión
         const nombreAlumno = localStorage.getItem("nombreLuchador");
-        const token = localStorage.getItem("tokenAtlas");
+        const token        = localStorage.getItem("tokenAtlas");
+        const rol          = localStorage.getItem("rolLuchador");
 
-        // 2. Seguridad: Si no hay token, rebota al login
+        /*
+            NUEVO: También guardamos la membresía en localStorage.
+            El login ya la devuelve, acá la recuperamos.
+            La usamos para mostrar u ocultar el banner de membresía.
+        */
+        const membresia = localStorage.getItem("membresiaAtlas") || "sin_membresia";
+
         if (!nombreAlumno || !token) {
             window.location.href = "login.html";
         }
-        
+
         document.getElementById("displayNombre").innerText = nombreAlumno;
 
-        // 3. Cabeceras para todas las peticiones
+        if (rol === "ADMIN") {
+            document.getElementById("btnPanelMaestro").style.display = "block";
+            document.getElementById("btnMisReservas").style.display = "none";
+        }
+
         function getHeaders() {
-            return { 
-                'Authorization': 'Bearer ' + token 
-            };
+            return { 'Authorization': 'Bearer ' + token };
         }
 
         function lanzarToast(msg, tipo) {
@@ -55,9 +94,8 @@
             setTimeout(() => t.className = "", 3000);
         }
 
-        // Calcula la fecha real de los días de la semana
         function obtenerProximaFechaObjeto(diaNombre) {
-            const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+            const diasSemana = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"];
             const hoy = new Date();
             const indiceHoy = hoy.getDay();
             const indiceDestino = diasSemana.indexOf(diaNombre);
@@ -68,10 +106,43 @@
             return res;
         }
 
+        /*
+            NUEVO: Función para abrir el modal de upgrade.
+            Se llama cuando el backend devuelve "LIMITE_ALCANZADO".
+        */
+        function abrirModalUpgrade() {
+            document.getElementById("modalUpgrade").style.display = "flex";
+        }
+
+        function cerrarModalUpgrade() {
+            document.getElementById("modalUpgrade").style.display = "none";
+        }
+
+        /*
+            NUEVO: Cuando el alumno acepta el upgrade,
+            llamamos al backend para crear una preferencia de pago
+            de MercadoPago con el plan "libre" y redirigimos al usuario.
+        */
+        async function irAPagarUpgrade() {
+            try {
+                const res = await fetch("http://localhost:7070/crear-pago", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        tipo:   "libre",
+                        nombre: nombreAlumno
+                    })
+                });
+                const data = await res.json();
+                window.location.href = data.init_point; // Redirige a MercadoPago
+            } catch (e) {
+                lanzarToast("Error al procesar el pago", "error");
+            }
+        }
+
         async function cargarCalendario() {
             const contenedor = document.getElementById('contenedorGrilla');
             try {
-                // Peticiones al servidor
                 const [resClases, resMisReservas] = await Promise.all([
                     fetch('http://localhost:7070/obtener-horarios', { headers: getHeaders() }),
                     fetch(`http://localhost:7070/chequear-reservas?alumno=${encodeURIComponent(nombreAlumno)}`, { headers: getHeaders() })
@@ -83,11 +154,9 @@
                     return;
                 }
 
-                if (!resClases.ok) {
-                    throw new Error("Error al obtener clases del servidor");
-                }
+                if (!resClases.ok) throw new Error("Error al obtener clases del servidor");
 
-                const clases = await resClases.json();
+                const clases     = await resClases.json();
                 const misReservas = await resMisReservas.json();
 
                 if (clases.length === 0) {
@@ -95,11 +164,10 @@
                     return;
                 }
 
-                // Lógica de organización por días
                 const diasUnicos = [...new Set(clases.map(c => c.dia))];
-                const cronologia = diasUnicos.map(d => ({ 
-                    nombre: d, 
-                    fechaObj: obtenerProximaFechaObjeto(d) 
+                const cronologia = diasUnicos.map(d => ({
+                    nombre:   d,
+                    fechaObj: obtenerProximaFechaObjeto(d)
                 })).sort((a, b) => a.fechaObj - b.fechaObj);
 
                 contenedor.innerHTML = '';
@@ -108,26 +176,29 @@
                     let html = `<div class="dia-columna">
                                     <h3>${item.nombre}<br>
                                     <small style="color:#e63946; font-size:12px;">${fechaTxt}</small></h3>`;
-                    
+
                     const clasesDelDia = clases.filter(c => c.dia === item.nombre);
                     clasesDelDia.forEach(clase => {
-                        // Verificar si ya existe una reserva para este alumno en este horario/disciplina
                         const yaAnotado = misReservas.find(r => r.horario === clase.horario && r.disciplina === clase.disciplina);
-                        
+
+                        const botonHtml = rol === "ADMIN"
+                            ? `<span style="color:#888; font-size:12px; text-align:center;">Vista de administrador</span>`
+                            : `<button class="btn-reservar"
+                                onclick="reservar(this, '${item.nombre}', '${clase.horario}', '${clase.disciplina}', '${fechaTxt}')"
+                                ${yaAnotado ? 'disabled style="background:#2e7d32; cursor: default;"' : ''}>
+                                ${yaAnotado ? 'ANOTADO' : 'RESERVAR'}
+                               </button>`;
+
                         html += `
                             <div class="clase-card ${clase.clase_tipo || 'normal'}">
                                 <span class="horario">${clase.horario}</span>
                                 <span class="disciplina">${clase.disciplina}</span>
-                                <button class="btn-reservar" 
-                                    onclick="reservar(this, '${item.nombre}', '${clase.horario}', '${clase.disciplina}', '${fechaTxt}')"
-                                    ${yaAnotado ? 'disabled style="background:#2e7d32; cursor: default;"' : ''}>
-                                    ${yaAnotado ? 'ANOTADO' : 'RESERVAR'}
-                                </button>
+                                ${botonHtml}
                             </div>`;
                     });
                     contenedor.innerHTML += html + `</div>`;
                 });
-            } catch (e) { 
+            } catch (e) {
                 console.error(e);
                 lanzarToast("Error al conectar con el servidor", "error");
                 contenedor.innerHTML = `<p style="color: #ff6b6b; padding: 20px;">⚠️ ${e.message}</p>`;
@@ -135,32 +206,48 @@
         }
 
         async function reservar(btn, dia, horario, disciplina, fecha) {
-            const params = new URLSearchParams({ 
-                alumno_nombre: nombreAlumno, 
-                dia, 
-                horario, 
-                disciplina, 
-                fecha 
+            const params = new URLSearchParams({
+                alumno_nombre: nombreAlumno,
+                dia,
+                horario,
+                disciplina,
+                fecha
             });
 
             try {
-                const res = await fetch('http://localhost:7070/reservar-clase', { 
-                    method: 'POST', 
+                const res = await fetch('http://localhost:7070/reservar-clase', {
+                    method: 'POST',
                     headers: {
                         ...getHeaders(),
                         'Content-Type': 'application/x-www-form-urlencoded'
-                    }, 
-                    body: params 
+                    },
+                    body: params
                 });
+
+                /*
+                    NUEVO: Manejamos tres respuestas posibles del backend:
+                    1. "LIMITE_ALCANZADO" → abrimos el modal de upgrade
+                    2. Otro error 403 → sin membresía, mandamos a comprar
+                    3. OK → reserva confirmada normalmente
+                */
+                if (res.status === 403) {
+                    const texto = await res.text();
+                    if (texto === "LIMITE_ALCANZADO") {
+                        abrirModalUpgrade();
+                    } else {
+                        lanzarToast("Necesitas una membresia para reservar clases.", "");
+                    }
+                    return;
+                }
 
                 if (!res.ok) throw new Error(await res.text());
 
-                lanzarToast("¡Reserva confirmada!", "exito");
+                lanzarToast("Reserva confirmada!", "exito");
                 btn.innerText = "ANOTADO";
                 btn.disabled = true;
                 btn.style.background = "#2e7d32";
-            } catch (e) { 
-                lanzarToast(e.message || "Error al reservar", "error"); 
+            } catch (e) {
+                lanzarToast(e.message || "Error al reservar", "error");
             }
         }
 
