@@ -1,1 +1,1 @@
-web: pip install -r requirements.txt && gunicorn Atlas-gym.atlas-gym-backend.main:app --bind 0.0.0.0:$PORT
+web: python -m gunicorn Atlas-gym.atlas-gym-backend.main:app --bind 0.0.0.0:$PORT
