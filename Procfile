@@ -1,1 +1,1 @@
-web: gunicorn Atlas-gym.atlas-gym-backend.main:app --bind 0.0.0.0:$PORT
+web: pip install gunicorn && gunicorn Atlas-gym.atlas-gym-backend.main:app --bind 0.0.0.0:$PORT
