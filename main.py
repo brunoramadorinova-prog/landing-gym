@@ -21,7 +21,7 @@ MP_ACCESS_TOKEN = "APP_USR-1144455658682984-041118-52d2cb98e4471f3609166835746e9
 
 EMAIL_REMITENTE = "bruno.ramadori.nova@gmail.com"
 EMAIL_PASSWORD  = "jlun npsd jhnd zgea"
-URL_FRONTEND    = "http://127.0.0.1:5500"
+URL_FRONTEND    = URL_FRONTEND = "https://brunoramadorinova-prog.github.io/landing-gym"
 
 MEMBRESIAS = {
     "limitado": {
