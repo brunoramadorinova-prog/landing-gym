@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas Gym - Calendario</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="contenedor-calendario">
+
+    <header class="cabecera-calendario">
+        <div>
+            <h2>Horarios del Tatami</h2>
+            <p style="color: #aaaaaa; font-size: 18px; margin-top: 5px;">
+                Bienvenido, <span id="displayNombre" style="color: #d32f2f; font-weight: bold;">Luchador</span>
+            </p>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <a href="entrenador.html" id="btnPanelMaestro" class="link-volver" 
+               style="background: #8b0000; padding: 10px 15px; border-radius: 5px; border: 1px solid #ff4d4d; text-decoration: none; color: white; font-weight: bold; font-size: 14px; display: none;">
+                PANEL MAESTRO
+            </a>
+            <a href="mis-reservas.html" id="btnMisReservas" class="link-volver" 
+               style="background: #333; padding: 10px 15px; border-radius: 5px; border: 1px solid #444; text-decoration: none; color: white; font-weight: bold; font-size: 14px;">
+                MIS RESERVAS
+            </a>
+            <a href="#" id="btnCerrarSesion" class="link-volver">CERRAR SESION</a>
+        </div>
+    </header>
+
+    <!--
+        NUEVO: Modal de upgrade a pase libre.
+        Aparece cuando el alumno con pase limitado intenta
+        reservar una tercera clase en la semana.
+        Por defecto está oculto (display: none).
+    -->
+    <div id="modalUpgrade" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 999; justify-content: center; align-items: center;">
+        <div style="background: #1a1a1a; border: 1px solid #d32f2f; border-radius: 8px; padding: 30px; max-width: 400px; text-align: center;">
+            <h3 style="color: #d32f2f; margin-bottom: 10px;">Limite semanal alcanzado</h3>
+            <p style="color: #ccc; margin-bottom: 20px;">
+                Ya usaste tus 2 clases de esta semana con el Pase Limitado.<br><br>
+                Upgrade al <strong style="color: white;">Pase Libre</strong> y entrenа sin limites.
+            </p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button onclick="cerrarModalUpgrade()" 
+                    style="background: #333; border: 1px solid #555; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: auto; font-size: 14px; margin: 0;">
+                    Ahora no
+                </button>
+                <button onclick="irAPagarUpgrade()" 
+                    style="background: #d32f2f; border: none; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: auto; font-size: 14px; margin: 0;">
+                    Upgrade a Pase Libre
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <main class="grilla-semana" id="contenedorGrilla">
+        <p style="color: white; padding: 20px;">Cargando cronograma de batalla...</p>
+    </main>
+
+    <div id="toastNotificacion"></div>
+
+    <script>
+        const nombreAlumno = localStorage.getItem("nombreLuchador");
+        const token        = localStorage.getItem("tokenAtlas");
+        const rol          = localStorage.getItem("rolLuchador");
+
+        /*
+            NUEVO: También guardamos la membresía en localStorage.
+            El login ya la devuelve, acá la recuperamos.
+            La usamos para mostrar u ocultar el banner de membresía.
+        */
+        const membresia = localStorage.getItem("membresiaAtlas") || "sin_membresia";
+
+        if (!nombreAlumno || !token) {
+            window.location.href = "login.html";
+        }
+
+        document.getElementById("displayNombre").innerText = nombreAlumno;
+
+        if (rol === "ADMIN") {
+            document.getElementById("btnPanelMaestro").style.display = "block";
+            document.getElementById("btnMisReservas").style.display = "none";
+        }
+
+        function getHeaders() {
+            return { 'Authorization': 'Bearer ' + token };
+        }
+
+        function lanzarToast(msg, tipo) {
+            const t = document.getElementById("toastNotificacion");
+            t.innerText = msg;
+            t.className = "mostrar " + (tipo || "");
+            setTimeout(() => t.className = "", 3000);
+        }
+
+        function obtenerProximaFechaObjeto(diaNombre) {
+            const diasSemana = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"];
+            const hoy = new Date();
+            const indiceHoy = hoy.getDay();
+            const indiceDestino = diasSemana.indexOf(diaNombre);
+            let diferencia = indiceDestino - indiceHoy;
+            if (diferencia < 0) diferencia += 7;
+            const res = new Date(hoy);
+            res.setDate(hoy.getDate() + diferencia);
+            return res;
+        }
+
+        /*
+            NUEVO: Función para abrir el modal de upgrade.
+            Se llama cuando el backend devuelve "LIMITE_ALCANZADO".
+        */
+        function abrirModalUpgrade() {
+            document.getElementById("modalUpgrade").style.display = "flex";
+        }
+
+        function cerrarModalUpgrade() {
+            document.getElementById("modalUpgrade").style.display = "none";
+        }
+
+        /*
+            NUEVO: Cuando el alumno acepta el upgrade,
+            llamamos al backend para crear una preferencia de pago
+            de MercadoPago con el plan "libre" y redirigimos al usuario.
+        */
+        async function irAPagarUpgrade() {
+            try {
+                const res = await fetch("https://landing-gym-81cn.onrender.com/crear-pago", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        tipo:   "libre",
+                        nombre: nombreAlumno
+                    })
+                });
+                const data = await res.json();
+                window.location.href = data.init_point; // Redirige a MercadoPago
+            } catch (e) {
+                lanzarToast("Error al procesar el pago", "error");
+            }
+        }
+
+        async function cargarCalendario() {
+            const contenedor = document.getElementById('contenedorGrilla');
+            try {
+                const [resClases, resMisReservas] = await Promise.all([
+                    fetch('https://landing-gym-81cn.onrender.com/obtener-horarios', { headers: getHeaders() }),
+                    fetch(`https://landing-gym-81cn.onrender.com/chequear-reservas?alumno=${encodeURIComponent(nombreAlumno)}`, { headers: getHeaders() })
+                ]);
+
+                if (resClases.status === 401 || resClases.status === 403) {
+                    localStorage.clear();
+                    window.location.href = "login.html";
+                    return;
+                }
+
+                if (!resClases.ok) throw new Error("Error al obtener clases del servidor");
+
+                const clases     = await resClases.json();
+                const misReservas = await resMisReservas.json();
+
+                if (clases.length === 0) {
+                    contenedor.innerHTML = '<p style="color:#888; padding: 20px;">No hay clases programadas.</p>';
+                    return;
+                }
+
+                const diasUnicos = [...new Set(clases.map(c => c.dia))];
+                const cronologia = diasUnicos.map(d => ({
+                    nombre:   d,
+                    fechaObj: obtenerProximaFechaObjeto(d)
+                })).sort((a, b) => a.fechaObj - b.fechaObj);
+
+                contenedor.innerHTML = '';
+                cronologia.forEach(item => {
+                    const fechaTxt = item.fechaObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+                    let html = `<div class="dia-columna">
+                                    <h3>${item.nombre}<br>
+                                    <small style="color:#e63946; font-size:12px;">${fechaTxt}</small></h3>`;
+
+                    const clasesDelDia = clases.filter(c => c.dia === item.nombre);
+                    clasesDelDia.forEach(clase => {
+                        const yaAnotado = misReservas.find(r => r.horario === clase.horario && r.disciplina === clase.disciplina);
+
+                        const botonHtml = rol === "ADMIN"
+                            ? `<span style="color:#888; font-size:12px; text-align:center;">Vista de administrador</span>`
+                            : `<button class="btn-reservar"
+                                onclick="reservar(this, '${item.nombre}', '${clase.horario}', '${clase.disciplina}', '${fechaTxt}')"
+                                ${yaAnotado ? 'disabled style="background:#2e7d32; cursor: default;"' : ''}>
+                                ${yaAnotado ? 'ANOTADO' : 'RESERVAR'}
+                               </button>`;
+
+                        html += `
+                            <div class="clase-card ${clase.clase_tipo || 'normal'}">
+                                <span class="horario">${clase.horario}</span>
+                                <span class="disciplina">${clase.disciplina}</span>
+                                ${botonHtml}
+                            </div>`;
+                    });
+                    contenedor.innerHTML += html + `</div>`;
+                });
+            } catch (e) {
+                console.error(e);
+                lanzarToast("Error al conectar con el servidor", "error");
+                contenedor.innerHTML = `<p style="color: #ff6b6b; padding: 20px;">⚠️ ${e.message}</p>`;
+            }
+        }
+
+        async function reservar(btn, dia, horario, disciplina, fecha) {
+            const params = new URLSearchParams({
+                alumno_nombre: nombreAlumno,
+                dia,
+                horario,
+                disciplina,
+                fecha
+            });
+
+            try {
+                const res = await fetch('https://landing-gym-81cn.onrender.com/reservar-clase', {
+                    method: 'POST',
+                    headers: {
+                        ...getHeaders(),
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: params
+                });
+
+                /*
+                    NUEVO: Manejamos tres respuestas posibles del backend:
+                    1. "LIMITE_ALCANZADO" → abrimos el modal de upgrade
+                    2. Otro error 403 → sin membresía, mandamos a comprar
+                    3. OK → reserva confirmada normalmente
+                */
+                if (res.status === 403) {
+                    const texto = await res.text();
+                    if (texto === "LIMITE_ALCANZADO") {
+                        abrirModalUpgrade();
+                    } else {
+                        lanzarToast("Necesitas una membresia para reservar clases.", "");
+                    }
+                    return;
+                }
+
+                if (!res.ok) throw new Error(await res.text());
+
+                lanzarToast("Reserva confirmada!", "exito");
+                btn.innerText = "ANOTADO";
+                btn.disabled = true;
+                btn.style.background = "#2e7d32";
+            } catch (e) {
+                lanzarToast(e.message || "Error al reservar", "error");
+            }
+        }
+
+        document.getElementById('btnCerrarSesion').onclick = (e) => {
+            e.preventDefault();
+            localStorage.clear();
+            window.location.href = "login.html";
+        };
+
+        window.onload = cargarCalendario;
+    </script>
+</body>
+</html>
