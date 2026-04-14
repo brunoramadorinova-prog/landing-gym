@@ -67,7 +67,7 @@
         }
 
         function handleCredentialResponse(response) {
-            fetch('http://localhost:7070/login-google', {
+            fetch('https://landing-gym-81cn.onrender.com/login-google', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: response.credential })
@@ -84,7 +84,7 @@
             evento.preventDefault(); 
             const datosLogin = new FormData(this);
 
-            fetch('http://localhost:7070/login', {
+            fetch('https://landing-gym-81cn.onrender.com/login', {
                 method: 'POST',
                 body: datosLogin
             })

@@ -35,7 +35,7 @@
     <script>
         async function cargarHistorialGeneral() {
             try {
-                const res = await fetch("http://localhost:7070/historial-general");
+                const res = await fetch("https://landing-gym-81cn.onrender.com/historial-general");
                 const datos = await res.json();
                 const tabla = document.getElementById("tabla-general");
 

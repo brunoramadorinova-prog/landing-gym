@@ -127,7 +127,7 @@
             try {
                 lanzarToast("Preparando el pago...", "");
 
-                const res = await fetch("http://localhost:7070/crear-pago", {
+                const res = await fetch("https://landing-gym-81cn.onrender.com/crear-pago", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

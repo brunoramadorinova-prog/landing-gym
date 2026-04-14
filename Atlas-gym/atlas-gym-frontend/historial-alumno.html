@@ -70,7 +70,7 @@
             if (!nombreAlumno) return;
 
             try {
-                const res = await fetch(`http://localhost:7070/historial-alumno?alumno=${encodeURIComponent(nombreAlumno)}`);
+                const res = await fetch(`https://landing-gym-81cn.onrender.com/historial-alumno?alumno=${encodeURIComponent(nombreAlumno)}`);
                 const datos = await res.json();
                 const tabla = document.getElementById("tabla-historial");
 

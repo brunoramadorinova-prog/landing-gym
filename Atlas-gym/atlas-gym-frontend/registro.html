@@ -115,7 +115,7 @@
                     El backend guarda nombre, email y password.
                     La membresía se activa después del pago.
                 */
-                const respuesta = await fetch('http://localhost:7070/registrar-luchador', {
+                const respuesta = await fetch('https://landing-gym-81cn.onrender.com/registrar-luchador', {
                     method: 'POST',
                     body: formData
                 });
@@ -139,7 +139,7 @@
                     Paso 3: Creamos la preferencia de pago en MercadoPago
                     y redirigimos al usuario para que pague.
                 */
-                const resPago = await fetch("http://localhost:7070/crear-pago", {
+                const resPago = await fetch("https://landing-gym-81cn.onrender.com/crear-pago", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

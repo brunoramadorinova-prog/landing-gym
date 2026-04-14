@@ -19,7 +19,7 @@
         };
 
         function cargarMisReservas(nombre) {
-            fetch(`http://localhost:7070/mis-reservas?alumno=${encodeURIComponent(nombre)}`)
+            fetch(`https://landing-gym-81cn.onrender.com/mis-reservas?alumno=${encodeURIComponent(nombre)}`)
             .then(respuesta => respuesta.json())
             .then(reservas => {
                 const contenedor = document.getElementById('contenedorReservas');
@@ -82,7 +82,7 @@
             const nombreAlumno = localStorage.getItem("nombreLuchador");
             const { dia, horario, disciplina } = reservaPendiente;
             
-            const url = `http://localhost:7070/cancelar-reserva?alumno=${encodeURIComponent(nombreAlumno)}&dia=${encodeURIComponent(dia)}&horario=${encodeURIComponent(horario)}&disciplina=${encodeURIComponent(disciplina)}`;
+            const url = `https://landing-gym-81cn.onrender.com/cancelar-reserva?alumno=${encodeURIComponent(nombreAlumno)}&dia=${encodeURIComponent(dia)}&horario=${encodeURIComponent(horario)}&disciplina=${encodeURIComponent(disciplina)}`;
             
             fetch(url, { method: 'DELETE' })
             .then(respuesta => respuesta.text())

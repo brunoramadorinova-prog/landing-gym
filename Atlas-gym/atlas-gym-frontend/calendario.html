@@ -125,7 +125,7 @@
         */
         async function irAPagarUpgrade() {
             try {
-                const res = await fetch("http://localhost:7070/crear-pago", {
+                const res = await fetch("https://landing-gym-81cn.onrender.com/crear-pago", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -144,8 +144,8 @@
             const contenedor = document.getElementById('contenedorGrilla');
             try {
                 const [resClases, resMisReservas] = await Promise.all([
-                    fetch('http://localhost:7070/obtener-horarios', { headers: getHeaders() }),
-                    fetch(`http://localhost:7070/chequear-reservas?alumno=${encodeURIComponent(nombreAlumno)}`, { headers: getHeaders() })
+                    fetch('https://landing-gym-81cn.onrender.com/obtener-horarios', { headers: getHeaders() }),
+                    fetch(`https://landing-gym-81cn.onrender.com/chequear-reservas?alumno=${encodeURIComponent(nombreAlumno)}`, { headers: getHeaders() })
                 ]);
 
                 if (resClases.status === 401 || resClases.status === 403) {
@@ -215,7 +215,7 @@
             });
 
             try {
-                const res = await fetch('http://localhost:7070/reservar-clase', {
+                const res = await fetch('https://landing-gym-81cn.onrender.com/reservar-clase', {
                     method: 'POST',
                     headers: {
                         ...getHeaders(),

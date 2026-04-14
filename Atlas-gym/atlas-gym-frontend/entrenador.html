@@ -72,7 +72,7 @@
         // Cierra clases pasadas y marca ausentes automáticamente al abrir el panel
         async function cerrarClasesPasadas() {
             try {
-                await fetch('http://localhost:7070/cerrar-clases-pasadas', {
+                await fetch('https://landing-gym-81cn.onrender.com/cerrar-clases-pasadas', {
                     method: 'POST',
                     headers: getHeaders()
                 });
@@ -83,7 +83,7 @@
 
         async function cargarTodo() {
             try {
-                const resC = await fetch('http://localhost:7070/obtener-horarios', { headers: getHeaders() });
+                const resC = await fetch('https://landing-gym-81cn.onrender.com/obtener-horarios', { headers: getHeaders() });
 
                 if (resC.status === 401 || resC.status === 403) {
                     cerrarSesionForzada();
@@ -99,7 +99,7 @@
                     </div>
                 `).join('') || '<p style="color:#666;">No hay clases en el cronograma.</p>';
 
-                const resR = await fetch('http://localhost:7070/todas-las-reservas', { headers: getHeaders() });
+                const resR = await fetch('https://landing-gym-81cn.onrender.com/todas-las-reservas', { headers: getHeaders() });
                 const reservas = await resR.json();
                 const contR = document.getElementById('contenedorReservas');
                 contR.innerHTML = reservas.length > 0 ? reservas.map(r => `
@@ -120,7 +120,7 @@
         document.getElementById('formNuevaClase').onsubmit = async (e) => {
             e.preventDefault();
             try {
-                const res = await fetch('http://localhost:7070/agregar-clase', {
+                const res = await fetch('https://landing-gym-81cn.onrender.com/agregar-clase', {
                     method: 'POST',
                     headers: getHeaders(),
                     body: new URLSearchParams(new FormData(e.target))
@@ -140,7 +140,7 @@
         async function eliminarClase(id) {
             if (confirm("¿Eliminar esta clase del cronograma permanente?")) {
                 try {
-                    const res = await fetch(`http://localhost:7070/eliminar-clase?id=${id}`, {
+                    const res = await fetch(`https://landing-gym-81cn.onrender.com/eliminar-clase?id=${id}`, {
                         method: 'DELETE',
                         headers: getHeaders()
                     });
@@ -160,7 +160,7 @@
             const fecha = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
             const params = new URLSearchParams({ alumno, dia, horario, disciplina, fecha });
             try {
-                const res = await fetch('http://localhost:7070/marcar-asistencia', {
+                const res = await fetch('https://landing-gym-81cn.onrender.com/marcar-asistencia', {
                     method: 'POST',
                     headers: getHeaders(),
                     body: params
