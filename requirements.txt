@@ -1,0 +1,9 @@
+flask
+flask-cors
+psycopg2-binary
+bcrypt
+google-auth
+requests
+mercadopago
+pyjwt
+gunicorn
